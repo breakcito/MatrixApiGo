@@ -10,6 +10,8 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 
 	"matrix-api-go/src/cases"
+	"matrix-api-go/src/middleware"
+	"matrix-api-go/src/utils"
 )
 
 var (
@@ -18,6 +20,9 @@ var (
 )
 
 func main() {
+	// Cargar variables de entorno desde archivo .env local si existe
+	utils.LoadEnv(".env")
+
 	// Configuración de Fiber con límite de body simétrico a Node.js (10MB)
 	app := fiber.New(fiber.Config{
 		BodyLimit: 10 * 1024 * 1024, // 10MB
@@ -68,9 +73,12 @@ func main() {
 		return c.Next()
 	})
 
-	// Casos de uso
+	// Rutas de salud y autenticación
 	app.Get("/health", cases.HealthCheck)
-	app.Post("/api/matrix", cases.ProcessMatrix)
+	app.Post("/api/auth/login", cases.Login)
+
+	// Ruta principal de procesamiento protegida con JWT
+	app.Post("/api/matrix", middleware.RequireAuth, cases.ProcessMatrix)
 
 	port := os.Getenv("PORT")
 	if port == "" {

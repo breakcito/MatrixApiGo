@@ -14,9 +14,12 @@ import (
 	"matrix-api-go/src/dto"
 )
 
-// FetchStats envía las matrices a la API de Node y retorna sus métricas
+// FetchStats envía las matrices a la API de Node y retorna sus métricas protegidas con JWT
 func FetchStats(data dto.StatsRequest) (*dto.StatsResponse, error) {
 	nodeURL := os.Getenv("API_STATS_URL")
+	if nodeURL == "" {
+		nodeURL = os.Getenv("API_STATS_URL")
+	}
 
 	if nodeURL == "" {
 		return nil, errors.New("API_STATS_URL no está configurada")
@@ -27,7 +30,20 @@ func FetchStats(data dto.StatsRequest) (*dto.StatsResponse, error) {
 		return nil, fmt.Errorf("error serializando payload: %w", err)
 	}
 
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Post(nodeURL, "application/json", bytes.NewBuffer(payload))
+	serviceToken, err := GenerateServiceToken()
+	if err != nil {
+		return nil, fmt.Errorf("error generando token de servicio para Node.js: %w", err)
+	}
+
+	httpReq, err := http.NewRequest("POST", nodeURL, bytes.NewBuffer(payload))
+	if err != nil {
+		return nil, fmt.Errorf("error creando petición a Node.js: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+serviceToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("error de conexión con Node.js: %w", err)
 	}
@@ -36,6 +52,11 @@ func FetchStats(data dto.StatsRequest) (*dto.StatsResponse, error) {
 	// Si Node devuelve 413, preservamos el 413 en vez de traducir a 502
 	if resp.StatusCode == http.StatusRequestEntityTooLarge {
 		return nil, fiber.NewError(fiber.StatusRequestEntityTooLarge, "el payload de las matrices excede el límite permitido por el servicio de estadísticas (413)")
+	}
+
+	// Si Node responde con 401 Unauthorized
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "no autorizado por el servicio de estadísticas de Node.js (JWT inválido o rechazado)")
 	}
 
 	// Si Node responde con cualquier otro error HTTP

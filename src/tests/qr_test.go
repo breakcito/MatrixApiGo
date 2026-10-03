@@ -2,6 +2,7 @@ package utils
 
 import (
 	"math"
+	"matrix-api-go/src/utils"
 	"testing"
 )
 
@@ -11,17 +12,17 @@ func TestValidateMatriz_ValidSmallNumbers(t *testing.T) {
 		{1e-15, 2.0},
 		{0.0, 3.0},
 	}
-	if err := ValidateMatriz(m); err != nil {
+	if err := utils.ValidateMatriz(m); err != nil {
 		t.Fatalf("se esperaba que 1e-15 fuera aceptado, pero dio error: %v", err)
 	}
 }
 
 func TestValidateMatriz_Empty(t *testing.T) {
-	if err := ValidateMatriz([][]float64{}); err == nil {
+	if err := utils.ValidateMatriz([][]float64{}); err == nil {
 		t.Fatal("se esperaba error para matriz vacía")
 	}
 
-	if err := ValidateMatriz([][]float64{{}}); err == nil {
+	if err := utils.ValidateMatriz([][]float64{{}}); err == nil {
 		t.Fatal("se esperaba error para filas vacías [[]]")
 	}
 }
@@ -31,19 +32,19 @@ func TestValidateMatriz_NonRectangular(t *testing.T) {
 		{1.0, 2.0},
 		{3.0},
 	}
-	if err := ValidateMatriz(m); err == nil {
+	if err := utils.ValidateMatriz(m); err == nil {
 		t.Fatal("se esperaba error para matriz no rectangular")
 	}
 }
 
 func TestValidateMatriz_NaNAndInf(t *testing.T) {
 	m1 := [][]float64{{math.NaN()}}
-	if err := ValidateMatriz(m1); err == nil {
+	if err := utils.ValidateMatriz(m1); err == nil {
 		t.Fatal("se esperaba error para NaN")
 	}
 
 	m2 := [][]float64{{math.Inf(1)}}
-	if err := ValidateMatriz(m2); err == nil {
+	if err := utils.ValidateMatriz(m2); err == nil {
 		t.Fatal("se esperaba error para +Inf")
 	}
 }
@@ -54,7 +55,7 @@ func TestValidateMatriz_DimensionGuards(t *testing.T) {
 	for i := range big {
 		big[i] = []float64{1.0}
 	}
-	if err := ValidateMatriz(big); err == nil {
+	if err := utils.ValidateMatriz(big); err == nil {
 		t.Fatal("se esperaba error al exceder máximo de filas")
 	}
 }
@@ -67,7 +68,7 @@ func TestCalculateQR_SubdiagonalClean(t *testing.T) {
 		{-4, 24, -41},
 	}
 
-	q, r := CalculateQR(a)
+	q, r := utils.CalculateQR(a)
 
 	// Verificar que bajo la diagonal de R todos los elementos sean estrictamente 0.0
 	for i := 0; i < len(r); i++ {
@@ -118,7 +119,7 @@ func TestCalculateQR_ZeroSubdiagonalResidue(t *testing.T) {
 		{0, 0},
 	}
 
-	_, r := CalculateQR(a)
+	_, r := utils.CalculateQR(a)
 	for i := 0; i < len(r); i++ {
 		for j := 0; j < len(r[0]); j++ {
 			if i > j && r[i][j] != 0.0 {

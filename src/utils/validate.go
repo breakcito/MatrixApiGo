@@ -4,9 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
 )
 
-// comprobar que la matriz sea valida
+func getEnvInt(key string, defaultVal int) int {
+	if val := os.Getenv(key); val != "" {
+		if i, err := strconv.Atoi(val); err == nil && i > 0 {
+			return i
+		}
+	}
+	return defaultVal
+}
+
+// ValidateMatriz comprueba que la matriz sea válida, rectangular, finita y dentro de límites seguros
 func ValidateMatriz(m [][]float64) error {
 	rows := len(m)
 
@@ -20,7 +31,23 @@ func ValidateMatriz(m [][]float64) error {
 		return errors.New("las filas de la matriz no pueden estar vacías")
 	}
 
-	// este limite garantiza que no se llegue al overflow facilmente
+	maxRows := getEnvInt("MATRIX_MAX_ROWS", 100)
+	maxCols := getEnvInt("MATRIX_MAX_COLUMNS", 100)
+	maxElements := getEnvInt("MATRIX_MAX_ELEMENTS", 10000)
+
+	if rows > maxRows {
+		return fmt.Errorf("la matriz excede el número máximo de filas permitido: %d > %d", rows, maxRows)
+	}
+
+	if cols > maxCols {
+		return fmt.Errorf("la matriz excede el número máximo de columnas permitido: %d > %d", cols, maxCols)
+	}
+
+	if rows*cols > maxElements {
+		return fmt.Errorf("la matriz excede el número total de elementos permitido: %d > %d", rows*cols, maxElements)
+	}
+
+	// este límite garantiza que no se llegue al overflow fácilmente durante el cálculo de normas
 	maxAbs := math.Sqrt(math.MaxFloat64 / (8 * float64(rows)))
 
 	for i := 0; i < rows; i++ {
@@ -59,27 +86,6 @@ func ValidateMatriz(m [][]float64) error {
 					j,
 					x,
 					maxAbs,
-				)
-			}
-
-			// Los valores extremadamente pequeños pueden perder precisión
-			if x != 0 && math.Abs(x) < math.Sqrt(math.SmallestNonzeroFloat64) {
-				return fmt.Errorf(
-					"el valor absoluto en [%d][%d] es demasiado pequeño: %.6e",
-					i,
-					j,
-					x,
-				)
-			}
-
-			// rechazamos valores no nulos por debajo de la tolerancia
-			if x != 0 && math.Abs(x) < 1e-12 {
-				return fmt.Errorf(
-					"el valor absoluto en [%d][%d] es menor que la tolerancia QR: %.6e < %.6e",
-					i,
-					j,
-					math.Abs(x),
-					1e-12,
 				)
 			}
 		}

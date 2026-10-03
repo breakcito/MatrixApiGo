@@ -1,14 +1,15 @@
 package cases
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v3"
 
 	"matrix-api-go/src/dto"
 	"matrix-api-go/src/utils"
 )
 
-// manejar todo, la validacion, rotacion, calculo de matrices q y r y
-// enviarle esto a la api con node
+// ProcessMatrix maneja validación, rotación, factorización QR y llamada al servicio de estadísticas
 func ProcessMatrix(c fiber.Ctx) error {
 	var req dto.MatrixRequest
 
@@ -19,7 +20,7 @@ func ProcessMatrix(c fiber.Ctx) error {
 		})
 	}
 
-	// validar que la matriz sea correcta y este dentro de los limites
+	// validar que la matriz sea correcta y esté dentro de los límites
 	if err := utils.ValidateMatriz(req.Matrix); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -29,10 +30,10 @@ func ProcessMatrix(c fiber.Ctx) error {
 	// rotar la matriz
 	rotated := utils.Rotate(req.Matrix)
 
-	// obteenr las matrices q y r
+	// obtener las matrices Q y R
 	q, r := utils.CalculateQR(req.Matrix)
 
-	// obtener estadisticas
+	// obtener estadísticas de la API de Node
 	stats, err := utils.FetchStats(dto.StatsRequest{
 		Rotated: rotated,
 		Q:       q,
@@ -40,6 +41,12 @@ func ProcessMatrix(c fiber.Ctx) error {
 	})
 
 	if err != nil {
+		var fiberErr *fiber.Error
+		if errors.As(err, &fiberErr) {
+			return c.Status(fiberErr.Code).JSON(fiber.Map{
+				"error": fiberErr.Message,
+			})
+		}
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error":  "error al consultar estadísticas",
 			"detail": err.Error(),

@@ -1,0 +1,6 @@
+.git
+.gitignore
+.env
+.env.*
+.DS_Store
+tests
